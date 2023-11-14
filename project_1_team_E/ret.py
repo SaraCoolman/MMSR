@@ -81,27 +81,21 @@ track_ids - ids of tracks retrieved
 '''
 def text_based(id, repr, N, sim_func):
 
-    # search for the row of the query song in the representation
+    #search for the row of the query song in the representation and get the vector of the query song
     query_row = repr[repr['id'] == id]
-
-    # exclude the id and index column
     query_vec = query_row.iloc[:, 2:].values[0]
 
     similarities = []
 
-    # iterate through all tracks in the dataset
+    #iterate through all tracks in the representation dataset, compute similarity score, add song IDs and store to a list
     for _ , row in repr.iterrows():
-        track_vec = row.iloc[2:].values  #start from third column
+        track_vec = row.iloc[2:].values
         similarity = sim_func(query_vec, track_vec)
         similarities.append((row['id'], similarity))
 
-    # Sort tracks by similarity
+    #sort by similarity score from most similar to least similar and save N most similar tracks and retrieve ids
     similarities.sort(key=lambda x: x[1], reverse=True)
-
-    # Retrieve the N most similar tracks
     most_similar_tracks = similarities[1:N+1]
-
-    # Retrieve the id of N most similar tracks
     res = [id for id, _ in most_similar_tracks]
 
     return res 
@@ -115,19 +109,15 @@ info - pandas Dataframe - information of the songs
 returns - list[str]
 res - ids of tracks retrieved 
 '''
+
 def random_baseline(id, info, N):
-    # Shuffle the songs DataFrame to get a random order
+    #put songs in random order and retrieve all shuffled songs without the query song
     shuffled_songs = info.sample(frac=1)
-    
-    # Exclude the query track using its ID
     shuffled_songs = shuffled_songs[shuffled_songs['id'] != id]
     
-    # Select the top N rows as the retrieved tracks
+    #select top N songs from the shuffled dataset and save the id of the result to a list
     retrieved_tracks = shuffled_songs.head(N)
-
-    # Get the id from these rows 
     res = retrieved_tracks['id'].tolist()
-    
     return res
 
 '''
@@ -135,10 +125,13 @@ wrapper function for cosine_similarity function to accept two numpy arrays
 arr1 - np.array - first input array
 arr2 - np.array - second input array
 
+
 returns - float
 res - cosine similarity score of 2 functions 
 '''
+
 def cos_sim(arr1, arr2):
+    #arrays need to be reshaped to 2d arrays
     arr1_reshape = arr1.reshape(1, -1)
     arr2_reshape = arr2.reshape(1, -1)
     res = cosine_similarity(arr1_reshape, arr2_reshape)[0][0]
