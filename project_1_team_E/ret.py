@@ -2,7 +2,10 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics.pairwise import cosine_similarity
-
+'''
+Version: 1.0.1 
+Date: 14.11.2023
+'''
 '''
 Utility Functions 
 '''
@@ -33,6 +36,15 @@ def get_id_from_info(song, artist, info):
     if not song_entry.empty:
         id = song_entry.iloc[0]['id']
         return id
+      
+'''
+function to display the result from dictionary
+ids - list[str] - list which stores ids of the retrieved songs
+info - pandas Dataframe - information of the songs
+'''
+def display_res(ids, info):
+    trl = get_info_from_ids(ids, info)
+    display_track_list(trl)
 
 '''
 function to get the names and artists from the ids of the retrieved tracks 
@@ -48,6 +60,14 @@ def get_info_from_ids(ids, info):
         if not entry.empty:
             res.append((entry.iloc[0]['song'], entry.iloc[0]['artist']))
     return res
+
+'''
+function to print the info from a list
+trl - list((str, str)) - list containing info stored in tuple (name, artist)
+'''
+def display_track_list(trl):
+    for tr in trl:
+        print(f"Name: {tr[0]:<40} Singer: {tr[1]}")
 
 '''
 retrieval system for a representation 
@@ -66,6 +86,7 @@ def text_based(id, repr, N, sim_func):
 
     # exclude the id and index column
     query_vec = query_row.iloc[:, 2:].values[0]
+
     similarities = []
 
     # iterate through all tracks in the dataset
