@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import statistics as st
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics.pairwise import cosine_similarity
 '''
@@ -137,6 +138,22 @@ def calculate_recall(query_genre, retrieved_genres, dataset_genres):
             relevant_songs_dataset += 1
             
     return  relevant_retrieved_songs / relevant_songs_dataset
+
+'''
+function to calculate the average precision of all 3 query songs
+'''
+def average_precision(p1, p2, p3):
+    precisions = [p1,p2,p3]
+    average_precision = st.mean(precisions)
+    return average_precision
+
+'''
+function to calculate the average recall of all 3 query songs
+'''
+def average_recall(r1, r2, r3):
+    recalls = [r1,r2,r3]
+    average_recall = st.mean(recalls)
+    return average_recall
 
 
 def compute_genre_distribution(query_genre, retrieved_result):
