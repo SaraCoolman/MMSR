@@ -251,8 +251,12 @@ def plot_precision_recall_curve(system_data):
 
 
     plt.show()
+    
+    
 
-
+'''
+function to compute the genre distribution and shannons entropy (Sara´s function)
+'''
 
 def compute_genre_distribution(retrieved_result, dataset_genres):
     # Get unique genres in the dataset
