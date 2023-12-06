@@ -222,6 +222,37 @@ def average_recall(r1, r2, r3):
     return average_recall
 
 
+'''
+function to plot the precision-recall curve
+'''
+def plot_precision_recall_curve(system_data):
+    k_values = list(range(1, 100))
+
+    plt.figure()
+
+    for system_name, system_info in system_data.items():
+        precisions = []
+        recalls = []
+
+        for k in k_values:
+            precision = calculate_precision_at_k(system_info["query_genre"], system_info["retrieved_genres"], k)
+            recall = calculate_recall_at_k(system_info["query_genre"], system_info["retrieved_genres"], system_info["dataset_genres"], k)
+
+            precisions.append(precision)
+            recalls.append(recall)
+
+        plt.plot(recalls, precisions, label=system_info["system_name"])
+
+
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision-Recall Curve for Evaluated Systems")
+    plt.legend()
+
+
+    plt.show()
+
+
 
 def compute_genre_distribution(retrieved_result, dataset_genres):
     # Get unique genres in the dataset
@@ -272,25 +303,15 @@ track_ids - ids of tracks retrieved
 '''
 def audio_based(id, repr, N, sim_func):
 
-    #search for the row of the query song in the representation and get the vector of the query song
-    query_row = repr[repr['id'] == id]
-    query_vec = query_row.iloc[:, 2:].values[0]
-
-    similarities = []
-
-    #iterate through all tracks in the representation dataset, compute similarity score, add song IDs and store to a list
-    for _ , row in repr.iterrows():
-        track_vec = row.iloc[2:].values
-        similarity = sim_func(query_vec, track_vec)
-        similarities.append((row['id'], similarity))
-
-    #sort by similarity score from most similar to least similar and save N most similar tracks and retrieve ids
-    similarities.sort(key=lambda x: x[1], reverse=True)
-    most_similar_tracks = similarities[1:N+1]
-    res = [id for id, _ in most_similar_tracks]
-
+    # return the query song's row in repr
+    target_row = repr[repr['id'] == id].iloc[:, 2:].to_numpy()
+    # calculate similarity score
+    repr['sim_score'] = repr.apply(lambda x:sim_func(x[2:].to_numpy(),target_row), axis=1)
+    # sort tracks by similarity 
+    sorted_repr = repr.sort_values(by='sim_score', ascending=False)
+    # get the N most similar tracks 
+    res = sorted_repr.iloc[1: N+1]['id'].to_numpy()
     return res 
-
 
 '''
 retrieval system for a representation 
