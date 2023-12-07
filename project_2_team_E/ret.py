@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import math
 import statistics as st
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics.pairwise import cosine_similarity
@@ -258,7 +259,7 @@ def plot_precision_recall_curve(system_data):
 function to compute the genre distribution and shannons entropy (Sara´s function)
 '''
 
-def compute_genre_distribution(retrieved_result, dataset_genres):
+def genre_diversity_10(retrieved_result, dataset_genres):
     # Get unique genres in the dataset
     all_genres = set()
     for _, genres_str in dataset_genres:
@@ -274,16 +275,47 @@ def compute_genre_distribution(retrieved_result, dataset_genres):
         for genre in retrieved_genres:
             genre_distribution[genre] += 1.0 / total_tracks if total_tracks > 0 else 0.0
 
-    # Convert the genre distribution to a list
     genre_distribution_list = [genre_distribution[genre] for genre in all_genres]
     
-     # Normalize the genre distribution
     normalized_distribution = {genre: count / total_tracks for genre, count in genre_distribution.items()}
 
     # Calculate Shannon's entropy for genre diversity@10
     entropy = -sum(p * math.log2(p) for p in normalized_distribution.values() if p > 0)
 
-    return normalized_distribution, entropy
+    return entropy
+
+ 'Paramters:'
+  'genres_retrived: (list(sets)--> [{},{}...]) list of sets of the genres of the retrived tracks/songs '
+  'all_genres: (list) of all unique genres in the whole dataset'
+  'N: (int) the number of retrived tracks/songs'
+  'returns: (float) the Genre diversity@N'
+#diversity function provided by Ali
+def diversity(genres_retrieved, all_genres, N):
+    zeros_vec = np.zeros(len(all_genres))
+    
+    for g in genres_retrieved:
+        leng_g = len(g)
+        
+        for g_i in g:
+            position = all_genres.index(g_i)
+            g_i_contribution = 1 / leng_g
+            zeros_vec[position] += g_i_contribution
+
+    result_vec = zeros_vec / N
+    
+    # Shannon's Entropy Calculation:
+    diversity_value = 0
+    
+    for item in result_vec:
+        if item != 0:
+            diversity_value += item * math.log(item, 2)
+    
+    return -diversity_value
+
+
+diversity_10 = diversity(genres_retrieved, all_genres, N)
+print('Genre diversity@10:', diversity_10)
+
 
 
 
