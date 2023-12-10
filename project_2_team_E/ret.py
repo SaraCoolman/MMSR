@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import math
+import ast
+from functools import reduce
 import statistics as st
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics.pairwise import cosine_similarity
@@ -259,37 +261,45 @@ def plot_precision_recall_curve(system_data):
 function to compute the genre distribution and shannons entropy (Sara´s function)
 '''
 
-def genre_diversity_10(retrieved_result, dataset_genres):
-    # Get unique genres in the dataset
-    all_genres = set()
-    for _, genres_str in dataset_genres:
-        all_genres.update(eval(genres_str))
-
-    # Initialize genre distribution vector with zeros
-    genre_distribution = {genre: 0.0 for genre in all_genres}
-
-    # Update genre distribution based on the retrieved tracks
-    total_tracks = len(retrieved_result)
-    for _, retrieved_genres_str in retrieved_result:
-        retrieved_genres = set(eval(retrieved_genres_str))
-        for genre in retrieved_genres:
-            genre_distribution[genre] += 1.0 / total_tracks if total_tracks > 0 else 0.0
-
-    genre_distribution_list = [genre_distribution[genre] for genre in all_genres]
+def genre_diversity_at_10(genres_retrieved, all_genres):
+    N = len(all_genres)
+    total_tracks = len(genres_retrieved)
     
-    normalized_distribution = {genre: count / total_tracks for genre, count in genre_distribution.items()}
-
-    # Calculate Shannon's entropy for genre diversity@10
-    entropy = -sum(p * math.log2(p) for p in normalized_distribution.values() if p > 0)
-
+    genre_distribution_sum = np.zeros(N)
+    
+    for track_genres in genres_retrieved:
+        num_genres = len(track_genres)
+        contribution = 1 / num_genres if num_genres > 0 else 0
+        
+        for genre in track_genres:
+            genre_index = all_genres.index(genre)
+            genre_distribution_sum[genre_index] += contribution
+    
+    # Normalize the distribution
+    normalized_distribution = genre_distribution_sum / total_tracks
+    
+    # Calculate Shannon's entropy
+    entropy = -np.sum(normalized_distribution * np.log2(normalized_distribution, where=(normalized_distribution != 0)))
+    
     return entropy
 
- 'Paramters:'
-  'genres_retrived: (list(sets)--> [{},{}...]) list of sets of the genres of the retrived tracks/songs '
-  'all_genres: (list) of all unique genres in the whole dataset'
-  'N: (int) the number of retrived tracks/songs'
-  'returns: (float) the Genre diversity@N'
+"""
+function to get the genre from ids
+"""
+def get_genre(id,genres_df):
+  # print(genres_df[genres_df['id'] == id ]['id'].values[0],'--->',id)
+  return set(genres_df[genres_df['id'] == id ]['genre'].values[0].replace("[", "").replace("]", "").replace("'", "").split(', '))
+
+
+"""
+'Paramters:'
+'genres_retrived: (list(sets)--> [{},{}...]) list of sets of the genres of the retrived tracks/songs '
+'all_genres: (list) of all unique genres in the whole dataset'
+'N: (int) the number of retrived tracks/songs'
+'returns: (float) the Genre diversity@N'
+"""
 #diversity function provided by Ali
+
 def diversity(genres_retrieved, all_genres, N):
     zeros_vec = np.zeros(len(all_genres))
     
@@ -313,10 +323,82 @@ def diversity(genres_retrieved, all_genres, N):
     return -diversity_value
 
 
-diversity_10 = diversity(genres_retrieved, all_genres, N)
-print('Genre diversity@10:', diversity_10)
+
+"""
+genre coverage @ 10
+genres - pd.DataFrame - genre data set 
+queries - nd.array - 2d array of results from query in ids 
+
+return: 
+res - float - genre coverage @ 10 score
 
 
+dependency: import numpy as np 
+            import pandas as pd 
+"""
+def gen_cov_10(retrieved, genres):
+    # 1.return number of unique genre in the dataset (offline, need optimization)
+    # 1.1 convert all the values in column "genre" from str to nd.array
+    genres["genre_arr"] = genres["genre"].apply(lambda x: np.array(ast.literal_eval(x)))
+    
+    # 1.2 return the union of all genres
+    all_genres = reduce(np.union1d, genres["genre_arr"])
+    num_all_genres = len(all_genres)
+    
+    # 2.return number of unique genre in the retrieved 
+    # 2.1 return genre of queries in genre with id as index 
+    retrieved_df = genres.loc[genres["id"].isin(retrieved.flatten())]
+    
+    # 2.2 return the union of all genres in queries 
+    retrieved_genres = reduce(np.union1d, retrieved_df["genre_arr"]) 
+    num_retrieved_genres = len(retrieved_genres)
+    
+    # 3. calculate the genre coverage@10
+    res = num_retrieved_genres / num_all_genres 
+    return res
+
+
+
+"""
+ndcg@10 score
+query_id - str - query id 
+retrieved_ids - List[str] - id of the retrieved tracks 
+genres - pd.DataFrame - genre dataset 
+
+
+return:
+ndcg - float - ndcg@10 score 
+
+"""
+
+def ndcg_score(query_id, retrieved_ids, genres):
+    # 1. convert all the values in column "genre" from str to nd.array
+    genres["genre_arr"] = genres["genre"].apply(lambda x: np.array(ast.literal_eval(x)))
+    
+    # 2. calculate the rel for each track 
+    query_genre = genres.loc[genres["id"] == query_id, 'genre_arr'].to_numpy()[0]
+    retrieved_genre = pd.DataFrame(retrieved_ids, columns=['id'])
+    retrieved_genre = pd.merge(genres, retrieved_genre, on="id", how="right")
+    retrieved_genre["rel"] = retrieved_genre["genre_arr"].apply(lambda x: 2 * len(np.intersect1d(x, query_genre)) / (len(x) + len(query_genre)))
+    
+    # 3. calculate dcg
+    rel = retrieved_genre["rel"].to_numpy()
+    gain = np.empty(rel.shape)
+    for i, _ in enumerate(rel):
+        gain[...,i] = rel[...,i] / np.log2(i + 2)
+    dcg = np.sum(gain)
+    
+    # 4. calculate idcg
+    rel_sort = np.sort(rel)[::-1]
+    rel_sort_gain = np.empty(rel_sort.shape)
+
+    for i, _ in enumerate(rel_sort):
+        rel_sort_gain[...,i] = rel_sort[...,i] / np.log2(i + 2)
+    idcg = np.sum(rel_sort_gain)
+    
+    # 5. calculate ndcg
+    ndcg = dcg / idcg
+    return ndcg 
 
 
 '''
@@ -361,24 +443,16 @@ track_ids - ids of tracks retrieved
 '''
 def text_based(id, repr, N, sim_func):
 
-    #search for the row of the query song in the representation and get the vector of the query song
-    query_row = repr[repr['id'] == id]
-    query_vec = query_row.iloc[:, 2:].values[0]
-
-    similarities = []
-
-    #iterate through all tracks in the representation dataset, compute similarity score, add song IDs and store to a list
-    for _ , row in repr.iterrows():
-        track_vec = row.iloc[2:].values
-        similarity = sim_func(query_vec, track_vec)
-        similarities.append((row['id'], similarity))
-
-    #sort by similarity score from most similar to least similar and save N most similar tracks and retrieve ids
-    similarities.sort(key=lambda x: x[1], reverse=True)
-    most_similar_tracks = similarities[1:N+1]
-    res = [id for id, _ in most_similar_tracks]
-
+    # return the query song's row in repr
+    target_row = repr[repr['id'] == id].iloc[:, 2:].to_numpy()
+    # calculate similarity score
+    repr['sim_score'] = repr.apply(lambda x:sim_func(x[2:].to_numpy(),target_row), axis=1)
+    # sort tracks by similarity 
+    sorted_repr = repr.sort_values(by='sim_score', ascending=False)
+    # get the N most similar tracks 
+    res = sorted_repr.iloc[1: N+1]['id'].to_numpy()
     return res 
+
 
 
 '''
