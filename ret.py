@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import math
 import os 
 
 import ast
@@ -7,6 +8,7 @@ from functools import reduce
 
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import precision_recall_curve
 '''
 Version: 2.0.1 
 Date: 10.12.2023
@@ -267,3 +269,106 @@ def ndcg_score(query_id, retrieved_ids, genres):
     # 5. calculate ndcg
     ndcg = dcg / idcg
     return ndcg 
+
+"""
+function to get the genre from ids
+"""
+def get_genre(id,genres_df):
+  # print(genres_df[genres_df['id'] == id ]['id'].values[0],'--->',id)
+  return set(genres_df[genres_df['id'] == id ]['genre'].values[0].replace("[", "").replace("]", "").replace("'", "").split(', '))
+
+
+"""
+'Paramters:'
+'genres_retrived: (list(sets)--> [{},{}...]) list of sets of the genres of the retrived tracks/songs '
+'all_genres: (list) of all unique genres in the whole dataset'
+'N: (int) the number of retrived tracks/songs'
+'returns: (float) the Genre diversity@N'
+"""
+def gen_div_10(genres_retrieved, all_genres, N):
+    zeros_vec = np.zeros(len(all_genres))
+    
+    for g in genres_retrieved:
+        leng_g = len(g)
+        
+        for g_i in g:
+            position = all_genres.index(g_i)
+            g_i_contribution = 1 / leng_g
+            zeros_vec[position] += g_i_contribution
+
+    result_vec = zeros_vec / N
+    
+    # Shannon's Entropy Calculation:
+    diversity_value = 0
+    
+    for item in result_vec:
+        if item != 0:
+            diversity_value += item * math.log(item, 2)
+    
+    return -diversity_value
+
+
+
+'''
+function to get the id and genres from the id of the query track
+info - pandas Dataframe - information of genres
+res - list[str] - list which stores the genres from the id of the query track
+'''
+def get_genre_from_query(query_id, genres):
+    entry = genres[genres['id'] == query_id]
+    if not entry.empty:
+        res = [(entry.iloc[0]['id'], entry.iloc[0]['genre'])]
+    else:
+        res = []
+    return res
+
+'''
+function to get the ids and genres from the ids of the retrieved tracks 
+ids - list[str] - list which stores ids of the retrieved songs
+info - pandas Dataframe - information of genres
+
+res - list[str] - list which stores the genres from the ids of the retrieved tracks 
+'''
+def get_genre_from_ids(ids, genres):
+    res = []
+    for id in ids:
+        entry = genres[genres['id'] == id]
+        if not entry.empty:
+            res.append((entry.iloc[0]['id'],entry.iloc[0]['genre']))
+    return res
+
+'''
+
+'''
+function to plot the precision-recall curve
+'''
+def plot_precision_recall_curve(system_data):
+    k_values = list(range(1, 100))
+
+    plt.figure()
+
+    for system_name, system_info in system_data.items():
+        precisions = []
+        recalls = []
+
+        for k in k_values:
+            precision = calculate_precision_at_k(system_info["query_genre"], system_info["retrieved_genres"], k)
+            recall = calculate_recall_at_k(system_info["query_genre"], system_info["retrieved_genres"], system_info["dataset_genres"], k)
+
+            precisions.append(precision)
+            recalls.append(recall)
+
+        plt.plot(recalls, precisions, label=system_info["system_name"])
+
+
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision-Recall Curve for Evaluated Systems")
+    plt.legend()
+
+
+    plt.show()
+    
+    
+   
+  
