@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import math
 import os 
-
+import matplotlib.pyplot as plt
 import ast
 from functools import reduce
 
@@ -337,7 +337,52 @@ def get_genre_from_ids(ids, genres):
             res.append((entry.iloc[0]['id'],entry.iloc[0]['genre']))
     return res
 
+
+
 '''
+function that calculates the recall at k
+'''
+def calculate_recall_at_k(query_genre, retrieved_genres, dataset_genres, k):
+    query_genres = set(eval(query_genre[0][1]))
+    
+    # Consider only the top k retrieved songs
+    top_k_retrieved_genres = retrieved_genres[:k]
+
+    relevant_retrieved_songs = 0
+    for song_id, genres_str in top_k_retrieved_genres:
+        genres = set(eval(genres_str))
+        if any(genre in genres for genre in query_genres):
+            relevant_retrieved_songs += 1
+    
+    query_genres = set(eval(query_genre[0][1]))
+    relevant_songs_dataset = 0
+    for song_id, genres_str in dataset_genres:
+        genres = set(eval(genres_str))
+        if any(genre in genres for genre in query_genres):
+            relevant_songs_dataset += 1
+            
+    return relevant_retrieved_songs / relevant_songs_dataset
+
+'''
+function to calculate precision @k
+'''
+
+def calculate_precision_at_k(query_genre, retrieved_genres, k):
+    query_genres = set(eval(query_genre[0][1]))
+
+    # Take only the top k items from retrieved_genres
+    top_k_retrieved_genres = retrieved_genres[:k]
+
+    count = 0
+    for song_id, genres_str in top_k_retrieved_genres:
+        genres = set(eval(genres_str))
+        if any(genre in genres for genre in query_genres):
+            count += 1
+
+    precision_at_k = count / k
+    return precision_at_k
+
+
 
 '''
 function to plot the precision-recall curve
