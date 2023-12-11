@@ -414,6 +414,35 @@ def plot_precision_recall_curve(system_data):
 
     plt.show()
     
-    
+
+def get_avg_precision_at_k(df, genres, dataset_genres, k):
+    # for each query(=row in dataframe) do
+    # find the genres of the query with get_genre_from_query(query_id, genres)
+    # calculate precision at k=10 
+    df['PrecisionAtK'] = df.apply(lambda row: calculate_precision_at_k(get_genre_from_query(row['id'], genres),  get_genre_from_ids(audio_based(row["id"], repr=df, N=100, sim_func=cos_sim), genres), 10), axis=1)
+
+    # Calculate mean precision at k
+    avg_precision = df['PrecisionAtK'].mean()
+
+    return avg_precision    
+
+
+
+def get_avg_recall_at_k(df, genres, dataset_genres, k):
+    # for each query(=row in dataframe) do
+    # find the genres of the query with get_genre_from_query(query_id, genres)
+    # calculate recall at k=10 
+
+
+
+    df['RecallAtK'] = df.apply(lambda row: calculate_recall_at_k(get_genre_from_query(row['id'], genres),get_genre_from_ids(audio_based(row["id"], repr=df, N=100, sim_func=cos_sim),genres),dataset_genres,10), axis=1)
+
+
+
+    # Calculate mean recall at k
+    avg_recall = df['RecallAtK'].mean()
+
+    return avg_recall
+   
    
   
