@@ -200,6 +200,25 @@ def audio_based(id, repr, N, sim_func):
     res = repr['id'].to_numpy()[sorted_indices[1:N+1]]
     return res 
 
+def video_based(id, repr, N, sim_func):
+    # Convert the repr dataframe to a numpy array, excluding the id column
+    repr_array = repr.iloc[:, 2:].to_numpy()
+
+    # Get the target row as a numpy array
+    target_row = repr_array[repr['id'] == id]
+
+    # Calculate the similarity score for all rows using broadcasting and matrix multiplication
+    sim_score = sim_func(repr_array, target_row)
+
+    # Assign the sim_score array to a new column in the repr dataframe
+    repr['sim_score'] = sim_score
+    # Sort the sim_score array in descending order and get the indices
+    sorted_indices = np.argsort(-sim_score)
+
+    # Get the N most similar tracks using numpy indexing
+    res = repr['id'].to_numpy()[sorted_indices[1:N+1]]
+    return res 
+
 
 """
 genre coverage @ 10
