@@ -165,7 +165,8 @@ res - euclidean similarity score of 2 functions
 def euc_sim(arr1, arr2):
     arr1_reshape = arr1.reshape(1, -1)
     arr2_reshape = arr2.reshape(1, -1)
-    res = euclidean_distances(arr1_reshape, arr2_reshape)[0][0]
+    distance = euclidean_distances(arr1_reshape, arr2_reshape)[0][0]
+    res = 1 / (1 + distance)
     return res
 
 """
